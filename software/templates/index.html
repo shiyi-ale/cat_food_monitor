@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>猫粮重量监测系统</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: "Microsoft YaHei", Arial, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background: #f4f7fb;
+      color: #1f2937;
+    }
+
+    header {
+      background: linear-gradient(135deg, #2563eb, #0f766e);
+      color: white;
+      padding: 28px 40px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 700;
+    }
+
+    header p {
+      margin: 8px 0 0;
+      opacity: 0.9;
+    }
+
+    main {
+      padding: 28px 40px;
+      max-width: 1200px;
+      margin: auto;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+      margin-bottom: 22px;
+    }
+
+    .card,
+    .section {
+      background: white;
+      border-radius: 18px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    }
+
+    .card {
+      padding: 20px;
+    }
+
+    .card-title {
+      font-size: 14px;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+
+    .value {
+      font-size: 30px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .unit {
+      font-size: 15px;
+      color: #64748b;
+      margin-left: 4px;
+    }
+
+    .status-online {
+      color: #059669;
+    }
+
+    .status-alarm {
+      color: #dc2626;
+    }
+
+    .section {
+      padding: 22px;
+      margin-bottom: 22px;
+    }
+
+    .section h2 {
+      margin: 0 0 16px;
+      font-size: 20px;
+    }
+
+    .bar-area {
+      height: 260px;
+      display: flex;
+      align-items: end;
+      gap: 10px;
+      border-left: 1px solid #e5e7eb;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 20px 10px 0;
+      overflow: hidden;
+    }
+
+    .bar {
+      flex: 1;
+      min-width: 8px;
+      background: linear-gradient(180deg, #38bdf8, #2563eb);
+      border-radius: 8px 8px 0 0;
+      position: relative;
+    }
+
+    .bar:hover::after {
+      content: attr(data-label);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #111827;
+      color: white;
+      padding: 6px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      white-space: nowrap;
+      margin-bottom: 6px;
+      z-index: 2;
+    }
+
+    .control-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    input {
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      font-size: 14px;
+      width: 160px;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 16px;
+      background: #2563eb;
+      color: white;
+      cursor: pointer;
+      font-size: 14px;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+    }
+
+    button.secondary {
+      background: #0f766e;
+    }
+
+    button.secondary:hover {
+      background: #115e59;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      padding: 10px 8px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+    }
+
+    th {
+      color: #475569;
+      background: #f8fafc;
+    }
+
+    .empty {
+      color: #64748b;
+      padding: 12px 0;
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      main {
+        padding: 20px;
+      }
+    }
+
+    @media (max-width: 560px) {
+      header {
+        padding: 24px 20px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      input,
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>猫粮重量监测系统</h1>
+    <p>NodeMCU-32 + MQTT + Python + SQLite 实时监测平台</p>
+  </header>
+
+  <main>
+    <div class="grid">
+      <div class="card">
+        <div class="card-title">当前重量</div>
+        <div>
+          <span class="value" id="weight">--</span>
+          <span class="unit">kg</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">ADC 原始值</div>
+        <div class="value" id="rawAdc">--</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">报警阈值</div>
+        <div>
+          <span class="value" id="threshold">--</span>
+          <span class="unit">kg</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">设备状态</div>
+        <div class="value" id="status">--</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>实时重量趋势</h2>
+      <div class="bar-area" id="chart"></div>
+    </div>
+
+    <div class="section">
+      <h2>远程配置</h2>
+      <div class="control-row">
+        <input id="intervalInput" type="number" placeholder="采集间隔 秒" min="1" />
+        <button onclick="setIntervalValue()">设置采集间隔</button>
+
+        <input id="thresholdInput" type="number" step="0.01" min="0" placeholder="报警阈值 kg" />
+        <button onclick="setThresholdValue()">设置报警阈值</button>
+
+        <button class="secondary" onclick="tare()">清零 / Tare</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>最近告警记录</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>时间</th>
+            <th>设备</th>
+            <th>重量 kg</th>
+            <th>阈值 kg</th>
+            <th>类型</th>
+          </tr>
+        </thead>
+        <tbody id="alarmTable"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <script>
+    async function fetchJson(url, options) {
+      const res = await fetch(url, options);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      return res.json();
+    }
+
+    async function fetchLatest() {
+      const data = await fetchJson("/api/latest");
+
+      document.getElementById("weight").textContent =
+        Number(data.weight_kg || 0).toFixed(3);
+
+      document.getElementById("rawAdc").textContent =
+        Number(data.raw_adc || 0).toFixed(0);
+
+      document.getElementById("threshold").textContent =
+        Number(data.alarm_threshold_kg || 0).toFixed(3);
+
+      const statusEl = document.getElementById("status");
+
+      if (data.alarm) {
+        statusEl.textContent = "低粮告警";
+        statusEl.className = "value status-alarm";
+      } else if (data.status === "online" || data.status === "config_updated" || data.status === "tare_done") {
+        statusEl.textContent = "在线";
+        statusEl.className = "value status-online";
+      } else {
+        statusEl.textContent = "离线";
+        statusEl.className = "value";
+      }
+    }
+
+    async function fetchHistory() {
+      const rows = await fetchJson("/api/history?limit=30");
+
+      const chart = document.getElementById("chart");
+      chart.innerHTML = "";
+
+      if (rows.length === 0) {
+        chart.innerHTML = '<div class="empty">暂无重量数据</div>';
+        return;
+      }
+
+      const maxValue = Math.max(...rows.map(row => Number(row.weight_kg || 0)), 0.5);
+
+      rows.forEach(row => {
+        const bar = document.createElement("div");
+        const weight = Number(row.weight_kg || 0);
+        const h = Math.max((weight / maxValue) * 220, 2);
+
+        bar.className = "bar";
+        bar.style.height = `${h}px`;
+        bar.dataset.label = `${row.timestamp} | ${weight.toFixed(3)} kg`;
+
+        chart.appendChild(bar);
+      });
+    }
+
+    async function fetchAlarms() {
+      const rows = await fetchJson("/api/alarms");
+
+      const tbody = document.getElementById("alarmTable");
+      tbody.innerHTML = "";
+
+      if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">暂无告警记录</td></tr>';
+        return;
+      }
+
+      rows.forEach(row => {
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+          <td>${row.timestamp}</td>
+          <td>${row.device_id}</td>
+          <td>${Number(row.weight_kg).toFixed(3)}</td>
+          <td>${Number(row.alarm_threshold_kg).toFixed(3)}</td>
+          <td>${row.alarm_type}</td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function sendControl(payload) {
+      await fetchJson("/api/control", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          device_id: "cat_bowl_01",
+          ...payload,
+        }),
+      });
+    }
+
+    async function setIntervalValue() {
+      const value = document.getElementById("intervalInput").value;
+
+      if (!value) {
+        alert("请输入采集间隔");
+        return;
+      }
+
+      await sendControl({
+        cmd: "set_config",
+        sample_interval_s: Number(value),
+      });
+
+      alert("采集间隔已下发");
+    }
+
+    async function setThresholdValue() {
+      const value = document.getElementById("thresholdInput").value;
+
+      if (!value) {
+        alert("请输入报警阈值");
+        return;
+      }
+
+      await sendControl({
+        cmd: "set_config",
+        alarm_threshold_kg: Number(value),
+      });
+
+      alert("报警阈值已下发");
+    }
+
+    async function tare() {
+      await sendControl({
+        cmd: "tare",
+      });
+
+      alert("清零指令已下发");
+    }
+
+    async function refreshAll() {
+      try {
+        await fetchLatest();
+        await fetchHistory();
+        await fetchAlarms();
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    refreshAll();
+    setInterval(refreshAll, 2000);
+  </script>
+</body>
+</html>
